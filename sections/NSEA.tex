@@ -1,0 +1,32 @@
+\section{Non-Square Exponential Attention Mechanism}
+
+Building upon the defined non-square matrix exponential, we propose a novel attention mechanism that leverages this operation to capture high-order interactions in the input data. The Non-Square Exponential Attention (NSEA) mechanism is defined as follows, based on the radial structure of multi-head attention, the radial basis functions, and the exponential form of attention described earlier. The NSEA for a given input matrix $\X \in \mathbb{R}^{m \times n}$ is defined as:
+
+\begin{equation}
+  \label{eq:nsea}
+  H \defeq \exp\left( \frac{\Q \K^T }{ \sqrt{d_{k}}} \right) \V
+\end{equation}
+
+
+where $\Q_i = \X \W_{q_i}, \quad \W_{q_i} \in \mathbb{R}^{n \times d_k}$,  $\K_i = \X \W_{k_i}, \quad \W_{k_i} \in \mathbb{R}^{n \times d_k}$, and $\V_i = \X \W_{v_i}, \quad \W_{v_i} \in \mathbb{R}^{n \times d_v}$.\\
+
+Finally, we also compared results using NSEA but without using $\circledast$ operation, instead using Hadamard product ($\odot$) to extend non-square matrix exponentiation and using the same radial basis function structure such that:
+
+\subsection{Experiments and Results}
+
+To evaluate the effectiveness of the NSEA mechanism, we conducted different experiments, comparing its performance against traditional multihead-attention. The results indicate that NSEA consistently outperforms standard attention in terms of accuracy and convergence speed, particularly in tasks requiring the modeling of complex relationships like natural language tasks. \\
+
+\subsubsection{Computation Effeciency}
+
+We analyszed the computation effeciency of NSEA compared against Multi-head attention (MHA), and Hadamard-based exponential attention (HEA) by measuring the time taken for forward passes on varying vocab sizes and a random input sequence of lengh $16384$.
+
+\input{sections/tables/computation_efficiency}
+
+Table~\ref{tab:computation_efficiency} indicates that HEA consistently outperforms MHA, as expected, HEA is more efficiente than NSEA due to the simpler Hadamard product operation, but NSEA still maintains a competitive edge in terms of speed while providing enhanced modeling capabilities.
+
+\subsubsection{Complexity Capability Evaluation}
+
+To access the complexity capability of NSEA, we finetune the following models based on the Transformer architecture: a baseline model with Multi-Head Attention (MHA), a model with Hadamard-based Exponential Attention (HEA), and a model with Non-Square Exponential Attention (NSEA). Each model is trained and evaluated on benchmark datasets that require understanding of complex relationships, such as the GLUE benchmark for natural language understanding. The performance metrics, including accuracy and F1 score, are summarized in Table~\ref{tab:complexity_capability}.
+
+
+

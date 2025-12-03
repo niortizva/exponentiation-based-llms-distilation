@@ -1,11 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage[
-    a4paper,
-    top=1cm,
-    bottom=1cm,
-    left=1cm,
-    right=1cm,
-    footskip=1cm
+  a4paper
 ]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
@@ -15,21 +10,36 @@
 \usepackage{graphicx}
 \usepackage{subcaption}
 \usepackage{tikz}
+\usetikzlibrary{shapes, arrows.meta, fit, automata, positioning}
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{amsfonts}
 \usepackage[natbibapa]{apacite}
-\usepackage[OT1]{fontenc}
-\usepackage{nopageno}
+%% \usepackage[OT1]{fontenc}
+%% \usepackage{nopageno}
+\usepackage{hyperref}
 
 %% Commands
-\setlength{\parindent}{0pt}
+%% \setlength{\parindent}{0pt}
 \newcommand\defeq{\stackrel{\mathtt{def}}{=}}
-\newtheorem{definition}{def}
-\newtheorem{remark}{remark}
-\newcommand\vectorspace{\mathbb{R}}
-\newcommand{\rectid}[2]{I_{#1 \times #2}}
+
+% Important to explain some requirements or interesting facts
+\newtheorem{remark}{Remark}
+% Definition: an explanation of the mathematical meaning of a word.
+\newtheorem{definition}{Definition}
+% Proposition: a statement of fact that is true and interesting in a given context.
+\newtheorem{proposition}{Proposition}
+% Lemma: a true statement used in proving other true statements.
+\newtheorem{lemma}{Lemma}
+% Corollary: a true statement that is a simple deduction from a theorem or proposition.
+\newtheorem{corollary}{Corollary}
+% Example: an illustration of a definition or theorem.
+\newtheorem{example}{Example}
+
+\newcommand{\vectorspace}[2]{\mathbb{R}^{#1 \times #2}}
+\newcommand{\I}[2]{I_{#1 \times #2}}
+\newcommand{\0}[2]{\mathbf{0}_{#1 \times #2}}
 \newcommand\A{\mathbf{A}}
 \newcommand\B{\mathbf{B}}
 \newcommand\C{\mathbf{C}}
@@ -44,149 +54,23 @@
 \newcommand\R{\mathbb{R}}
 \newcommand\z{\mathbf{z}}
 \newcommand\x{\times}
+\newcommand\softmax{softmax}
 \newcommand{\vc}[1]{\mathbf{#1}}
 \newcommand{\mx}[1]{\mathbf{\uppercase{#1}}}
 \newcommand{\norm}[1]{\| #1 \|}
-\renewcommand{\exp}[1]{\mathit{e}^{#1}}
+\newcommand{\expo}[1]{\mathit{e}^{#1}}
 
 \begin{document}
 
-\begin{center}
-  \normalsize
-  \textbf{Neural Networks Exponentiation-based LLMs' Distilation}
-\end{center}
+\title{Non-square Matrix Product Exponentiation-based Attention}
+\author{Ortiz Valencia, Nicolás}
+\date{}
 
-\section*{\normalsize Introduction}
+\maketitle
 
-Inspired by polynomial neural networks (PNNs) and how multihead attention mechanisms change the game for natural language generation models (LLMs), we proposed a exponentiation approach which aims to capture rich features without the computational cost tradionally used in LLMs. Traditional multihead attention is defined by several parallel networks (heads: $H_i$) computed as:
-
-\begin{equation}
-H_{i} \defeq softmax\ \left(\frac{\Q_i  \K_i^T }{ \sqrt{d_{k}}}\right) \cdot \V_i
-\end{equation}
-
-Where:
-
-\begin{equation}
-  \begin{array}{rl}
-    \X    & \in \vectorspace^{m \times n}    : \text{ Input matrix} \\
-    \Q_i = \X \W_{\Q_i} & \in \vectorspace^{n \times d_k}  : \text{ query matrix} \\
-    \K_i = \X \W_{\K_i} & \in  \vectorspace^{n \times d_k} : \text{ key matrix} \\
-    \V_i = \X \W_{\V_i} & \in \vectorspace^{n \times d_v}  : \text{ value matrix}
-  \end{array}
-\end{equation}
-
-Looking at the expression $\displaystyle (\X \W_{Q_{i}}) \ \left(\W_{K_{I}}^{T}\X^{T}\right)$, it can be noticed that it is an exponentiation operation of the matrix product. Thus, because $H_i \in \vectorspace^{n\x d_v  }$ and $softmax$ applied to rows transform an $m\x n$ matrix into a  $m \x 1$ it follows:
-
-\begin{definition}\normalfont
-  Let $\A \in \vectorspace^{m\x p}$ and $\B \in \vectorspace^{p\x n}$ such that $\C = \A \B \in \vectorspace^{m\x n}$. In order to preserve dimensions, this means that, if $\C \in \vectorspace^{m\x n}$ then $\C^{n} \in \vectorspace^{m\times n}$, where $\C^n$ is the $n$-th power of $\C$. It follows that: 
-
-  \begin{equation}
-    \begin{array}{l}
-      \C^0 \defeq \rectid{m}{n} \\
-      \C^1 \defeq (\A \B)^1 = (\A \B) \\
-      \C^2 \defeq \C^1 (\C^1)^T = (\A \B) (\B^T \A^T)
-    \end{array}
-  \end{equation}
-
-  $\therefore$ recursively $(\A \B)^n \defeq \prod_{i=0}^{n} f(\A \B, n)$ where:
-  
-  \begin{equation}
-    f(\A \B, n) = \left\lbrace \begin{array}{lrl}
-      \rectid{m}{n} & , & n = 0 \\
-      (AB) & , & n \bmod 2 = 0 \text{ and } n\neq 0\\
-      (AB)^T & , & n \bmod 2 \neq 0
-    \end{array} \right.
-  \end{equation}
-\end{definition}
-
-\begin{remark}\normalfont
-  The Exponential matrix can be calculated using taylor series expansion as $ \exp{\X} = I + \sum_{k=1}^{\infty} \frac{\X^k}{k!}$ and can be applied for for non-square matrix product as:
-
-  \begin{equation}
-    \mathit{e} ^ {\X \W} = I_{m\x n} + \sum_{k=1}^{\infty} \frac{\X^k}{k!}
-  \end{equation}
-
-  for $\X \in \vectorspace^{m\x p}$ and $\W \in \vectorspace^{p\x n}$. In addition, attention mechanisms are often based on the $softmax$ function, described as $\sigma(\z)_i = \exp{z_i} / \sum_{j=1}^{k} \exp{z_j}$ for some $\z \in \vectorspace^{k}$ where $k > 1$. Then, mathematically, $H_i$ is the product of the $softmax$ function of a series of exponential-related operations by a matrix product ($\X \W_{V_i}$), which is what we are looking to do by defining the exponential of a matrix product. Our hypothesis is that, by recurring to a formal definition of the exponential of non-square matrix we can capture the escence of traditional attention mechanisms but, reducing the amount of parameters to required to obtain LLMs comparable results.
-\end{remark}
-
-$\therefore$ We can extend the exponential of a matrix product to avoid explicit exponential matrix calculation by limiting the expansion to $n\leq \infty$:
-
-\begin{equation}
-\mathit{e}^{\X \W} \approx I_{m \times n} + \sum_{k=1}^{n} \frac{(\X \W)^k}{k!}
-\end{equation}
-
-and combining infinite number of feature dimensions using a radial basis function representation parameterized by $\sigma=1$. Then, we can define the attention like mechanism as:
-
-\begin{equation}
-\phi(\X, \W) \defeq \text{exp}\left(-\frac{ (\X \W)^2 }{ 2 }\right)
-\end{equation}
-
-This allows us to capture attention-like attention mechanisms ny reducing the number of parameters required, and computational cost.
-
-\begin{equation}
-H_i = \phi(\X, \W)
-\end{equation}
-
-The output dimension of $\phi(\X, \W) \in \mathbb{R}^{m \times n}$ matches the matrix product dimensions, analogous to concatenating multiple attention heads in traditional multi-head attention. To better emulate standard attention mechanisms and maintain model dimensions, we can incorporate a linear projection layer:
-
-\begin{equation}
-H = \phi(\X, \W) \cdot \W_O \quad \text{where} \quad \W_O \in \mathbb{R}^{n \times d_{model}}
-\end{equation}
-
-Analyzing the derivative with respect to the input reveals important gradient properties:
-
-\begin{equation}
-\frac{\partial \phi}{\partial (\X \W)} = -(\X \W) \cdot \exp{\left(-\frac{(\X \W)^2}{2}\right)}
-\end{equation}
-
-The gradient magnitude is bounded by $|\frac{\partial \phi}{\partial (\X \W)}| \leq \frac{1}{\sqrt{e}}$, preventing exploding gradients. The gradient magnitude bound of $\frac{1}{\sqrt{e}}$ is concluded by analyzing the critical points of the derivative function. We begin with the defined radial basis function:
-
-\begin{equation*}
-\phi(z) = \exp{\left(-\frac{z^2}{2}\right)}
-\end{equation*}
-
-where $z = \X\W$ is a scalar argument for the purpose of this derivation. The derivative with respect to $z$ is:
-
-\begin{equation*}
-\frac{d\phi}{dz} = -z \cdot \exp{\left(-\frac{z^2}{2}\right)}
-\end{equation*}
-
-To find the maximum magnitude of this derivative, we consider the absolute value and find its maximum:
-
-\begin{equation*}
-g(z) = \left|\frac{d\phi}{dz}\right| = |z| \cdot \exp{\left(-\frac{z^2}{2}\right)}
-\end{equation*}
- 
-Since $g(z)$ is an even function, we can find the maximum for $z \geq 0$:
-
-\begin{equation*}
-g(z) = z \cdot \exp{\left(-\frac{z^2}{2}\right)}
-\end{equation*}
-
-We find the critical point by taking the derivative and setting it to zero:
-
-\begin{equation*}
-g'(z) = \exp{\left(-\frac{z^2}{2}\right)} - z^2 \cdot \exp{\left(-\frac{z^2}{2}\right)} = (1 - z^2) \cdot \exp{\left(-\frac{z^2}{2}\right)} = 0
-\end{equation*}
- 
-This equation holds when $1 - z^2 = 0$, which gives $z = \pm 1$. Substituting $z=1$ back into $g(z)$ yields the maximum value:
-
-\begin{equation*}
-g(1) = (1) \cdot \exp{\left(-\frac{(1)^2}{2}\right)} = \exp{\left(-\frac{1}{2}\right)} = \frac{1}{\sqrt{e}}
-\end{equation*}
-
-Therefore, the magnitude of the gradient is bounded by $\frac{1}{\sqrt{e}}$:
-
-\begin{equation}
-\left|\frac{d\phi}{dz}\right| \leq \frac{1}{\sqrt{e}}
-\end{equation}
-
-However, for very large $|\X \W|$ values, the gradient can vanish. To mitigate this, we can make $\sigma$ a learnable parameter:
-
-\begin{equation}
-\phi(\X, \W) \defeq \exp{\left(-\frac{(\X \W)^2}{2\sigma^2}\right)}
-\end{equation}
-
-This allows the model to automatically adjust the sensitivity and gradient scale, balancing between preventing vanishing gradients for large inputs and maintaining sufficient gradient signal for optimization.
+\input{sections/Introduction}
+\input{sections/Background_and_rationale}
+\input{sections/Proposed_Methodology}
+\input{sections/NSEA}
 
 \end{document}

@@ -1,0 +1,24 @@
+\section{Background and Rationale}
+
+\subsection{Multi-Head Attention}
+
+The standard multi-head attention mechanism operates by projecting an input matrix into multiple subspaces via parallel "heads." For a given head $i$, the operation is defined as:
+
+\begin{equation}
+  \label{eq:multi-head-attention}
+  H_{i} \defeq softmax \left(\frac{\Q_i \K_i^T }{ \sqrt{d_{k}}}\right) \V_i,
+\end{equation}
+
+where the constituent matrices are derived from the input $\X \in \mathbb{R}^{m \times n}$ as follows:
+
+\begin{align*}
+  \Q_i &= \X \W_{q_i}, \quad \W_{q_i} \in \mathbb{R}^{n \times d_k}, \\
+  \K_i &= \X \W_{k_i}, \quad \W_{k_i} \in \mathbb{R}^{n \times d_k}, \\
+  \V_i &= \X \W_{v_i}, \quad \W_{v_i} \in \mathbb{R}^{n \times d_v}.
+\end{align*}
+
+Here, $\Q_i, \K_i \in \mathbb{R}^{m \times d_k}$ are the query and key matrices, respectively, and $\V_i \in \mathbb{R}^{m \times d_v}$ is the value matrix.
+
+\subsection{Exponential Form of Attention}
+
+The core of the attention mechanism lies in the scaled dot-product $\Q_i \K_i^T$. The subsequent application of the $\softmax$ function, defined for a vector $\z \in \mathbb{R}^K$ as $\sigma(\z)_i = \exp(z_i) / \sum_{j=1}^{K} \exp(z_j)$, imparts an exponential character to the entire operation. This observation is critical: the output of each attention head $H_i \in \mathbb{R}^{m \times d_v}$ is fundamentally a product of an exponentially-weighted matrix and a linear projection of the input.

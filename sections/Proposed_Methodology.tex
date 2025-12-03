@@ -1,0 +1,132 @@
+\section{Proposed Methodology: Exponentiation of Non-Square Matrices}
+
+The classical matrix exponential, defined for a square matrix $\A \in \mathbb{R}^{n \times n}$ via the Taylor series:
+
+\begin{equation}
+  \label{eq:matrix-exponential}
+  \exp(\A) = \I{m}{n} + \sum_{k=1}^{\infty} \frac{\A^k}{k!},
+\end{equation}
+
+is inapplicable to non-square matrices that appear in attention due to the lack of a formal non-square matrix power function mechanism. To bridge this gap, we propose a formal definition for the exponential of a non-square matrix product. We hypothesize that such a definition can encapsulate the essence of the attention mechanism's exponential weighting, potentially leading to more parameter-efficient models. \\
+
+Let $\A \in \mathbb{R}^{m \times n}$ and $\B \in \mathbb{R}^{n \times p}$. We seek to define an operation $\exp(\A \B^T)$ that retains the expressive power of the attention mechanism. A prerequisite for this is the definition of a custom product operation ($\circledast$) for non-square matrices that enables the construction of a meaningful power series. Let $\A, \B, \C \in \mathbb{R}^{m \times n}$. The proposed product operation should ideally satisfy the following algebraic properties:
+
+\begin{enumerate}
+  \item \textbf{Associativity:} $(\A \circledast \B) \circledast \C = \A \circledast (\B \circledast \C)$.
+  \item \textbf{Identity Element:} There exists an element $\I{m}{n}$ such that $\I{m}{n} \circledast \A = \A$.
+  \item \textbf{Null Element:} There exists an element $\mathbf{0}$ such that $\0{m}{n} \circledast \A = \0{m}{n}$.
+\end{enumerate}
+
+Hadamard product ($\odot$) is a well-known element-wise multiplication operation for matrices of the same dimensions, however, it lacks of elements recombination power of standard matrix multiplication. To address this, we propose a novel product operation $\circledast$ for non-square matrices that combines the element-wise multiplication with a summation over the rows, effectively allowing for a richer interaction between the elements of the matrices involved. The development of such an operation is the primary theoretical contribution of this work, forming the basis for our proposed exponentiation-based attention mechanism. Thus:
+
+\begin{definition}
+  Given $\A , \B \in \vectorspace{m}{n}$, we define the product operation $\circledast  : \vectorspace{m}{n} \to \vectorspace{m}{n}$ as a block matrix given by:
+
+  \begin{equation}
+    \label{eq:non-square-product}
+    \A \circledast \B \defeq \sum_{k=1}^{n} \left[ \begin{matrix}
+      \A_{k} \odot \B_{1} \\
+      \vdots \\
+      \A_{k} \odot \B_{m} \\
+    \end{matrix} \right]
+  \end{equation}
+
+  where $\A_{i}$ denotes the $i$-th row of matrix $\A$, and $\odot$ represents the element-wise multiplication or Hadamard product.
+\end{definition}
+
+\begin{remark}
+The product operation $\circledast$ defined in Equation~\ref{eq:non-square-product} possesses several key algebraic properties. It is associative, meaning $(\A \circledast \B) \circledast \C = \A \circledast (\B \circledast \C)$ for all $\A, \B, \C \in \mathbb{R}^{m \times n}$. Furthermore, there exists a identity element $\I{m}{n}$ such that $\I{m}{n} \circledast \A = \A$ for any $\A$, and a null element $\mathbf{0} \in \mathbb{R}^{m \times n}$ such that $\mathbf{0} \circledast \A = \mathbf{0}$. These properties are fundamental for the subsequent definition of a matrix exponential based on this product.
+\end{remark}
+
+\begin{proposition}
+  The product operation $\circledast$ defined in Equation~\ref{eq:non-square-product} is associative, has a left identity element $\I{m}{n}$, and a null element $\0{m}{n}$. That is:
+  \begin{enumerate}
+    \item[(i)] \textbf{Associativity:} For $\A, \B, \C \in \vectorspace{m}{n}$, $(\A \circledast \B) \circledast \C =  \A \circledast (\B \circledast \C$.
+    \item[(ii)] \textbf{Identity Element:} Let $\A \in \vectorspace{m}{n}$ and $\I{m}{n}$ be the non-square identity matrix, then: $\I{m}{n} \circledast \A = \A$.
+    \item[(iii)] \textbf{Null Element:} Let $\A \in \vectorspace{m}{n}$ and $\0{m}{n}$ be the zero non-square matrix, then: $\0={m}{n} \circledast \A = \0{m}{n}$.
+  \end{enumerate}
+\end{proposition}
+
+\begin{proof}
+  \begin{enumerate}
+    \item[(i)] \textbf{Associativity:} Let $\A, \B, \C \in \vectorspace{m}{n}$. Then:
+      \begin{align*}
+        (\A \circledast \B) \circledast \C &
+        = \sum_{p=1}^{n} \left[ \begin{matrix}
+          \A_{p} \odot \B_{1} \\
+          \vdots \\
+          \A_{p} \odot \B_{m} \\
+        \end{matrix} \right] \circledast \C = \left[ \begin{matrix}
+          \sum_{p=1}^{n} \A_{p} \odot \B_{1} \\
+          \vdots \\
+          \sum_{p=1}^{n} \A_{p} \odot \B_{m} \\
+        \end{matrix} \right] \circledast \C \\ 
+        & = \sum_{q=1}^{n} \left[ \begin{matrix}
+          \left(\sum_{p=1}^{n} \A_{p} \odot \B_{q}\right) \odot C_1 \\
+          \vdots \\
+          \left(\sum_{p=1}^{n} \A_{p} \odot \B_{q}\right) \odot C_m\\
+        \end{matrix} \right] \\
+        & = \sum_{p=1}^{n} \left[ \begin{matrix}
+          \A_{p} \odot \left(\sum_{q=1}^{n}  \B_{q} \odot C_1 \right) \\
+          \vdots \\
+          \A_{p} \odot \left(\sum_{q=1}^{n} \B_{q} \odot C_m \right) \\
+        \end{matrix} \right] \\
+        & = \A \circledast \sum_{p=1}^{n} \left[ \begin{matrix}
+          \left(\sum_{q=1}^{n}  \B_{q} \odot C_1 \right) \\
+          \vdots \\
+          \left(\sum_{q=1}^{n} \B_{q} \odot C_m \right)
+        \end{matrix} \right] = \A \circledast (\B \circledast \C) \\
+      \end{align*}
+    \item[(ii)] \textbf{Identity Element:} Let $\A \in \vectorspace{m}{n}$ and $\I{m}{n}$ be the non-square identity matrix such that: 
+      \[
+        \left(\I{m}{n}\right)_{i,j} = \begin{cases}
+          1 & \text{if } i = j \\
+          0 & \text{otherwise}
+        \end{cases}
+      \]
+      Then:
+      \begin{align*}
+        \I{m}{n} \circledast \A &
+        = \sum_{k=1}^{n} \left[ \begin{matrix}
+          \left(\I{m}{n}\right)_{k} \odot A_1 \\
+          \vdots \\
+          \left(\I{m}{n}\right)_{k} \odot A_m \\
+        \end{matrix} \right] = \left[ \begin{matrix}
+          \sum_{k=1}^{n} \left(\I{m}{n}\right)_{k} \odot A_1 \\
+          \vdots \\
+          \sum_{k=1}^{n} \left(\I{m}{n}\right)_{k} \odot A_m \\
+        \end{matrix} \right]
+      \end{align*}
+       Observe that $\left(\I{m}{n} \circledast \A\right)_{i,j} = \sum_{k=1}^{n} \left(\I{m}{n}\right)_{k, j} \odot A_{i,j} = A_{i,j}$ since only the term where $k = j$ contributes to the sum. Therefore, $\I{m}{n} \circledast \A = \A$.
+    \item[(iii)] \textbf{Null Element:} Let $\A \in \vectorspace{m}{n}$ and $\0{m}{n}$ be the zero non-square matrix ($\left(\0{m}{n}\right)_{i,j}= 0$), since all its entries are zero. Then $\left(\0{m}{n} \circledast \A\right)_{i,j} = 0$ for all $i, j$ since each term in the sum involves multiplication by zero. Thus, $\0{m}{n} \circledast \A = \0{m}{n}$.
+  \end{enumerate}
+\end{proof}
+
+Defining the power of a non-square matrix under the $\circledast$ operation allows us to extend the concept of the matrix exponential to non-square matrices. It follows.
+
+\begin{definition}
+  Let $\A \in \vectorspace{m}{n}$, denote $\A^n$ as the $n$-th power of $\A$ under the $\circledast$ operation, defined recursively as:
+  \begin{equation*}
+    \A^n \defeq \begin{cases}
+      \I{m}{n} & \text{if } n = 0,
+      \\
+      \A^{n-1} \circledast \A & \text{if } n \geq 1.
+    \end{cases}
+  \end{equation*}
+\end{definition}
+
+\begin{definition}
+  Given $\A \in \vectorspace{m}{n}$, we define the exponential of the non-square matrix $\A$ as:
+  \begin{equation}
+    \label{eq:non-square-exponential}
+    \exp(\A) \defeq \I{m}{n} + \sum_{k=1}^{\infty} \frac{\A^k}{k!},
+  \end{equation}
+  where $\A^k$ is defined using the $\circledast$ operation.
+\end{definition}
+
+For practical implementation, we approximate the infinite series in Equation~\ref{eq:non-square-exponential} by truncating it at a finite number of terms $K$:
+
+\begin{equation}
+  \label{eq:truncated-non-square-exponential}
+  \exp(\A) \approx \I{m}{n} + \sum_{k=1}^{K} \frac{\A^k}{k!}.
+\end{equation}
