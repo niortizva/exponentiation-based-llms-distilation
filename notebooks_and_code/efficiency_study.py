@@ -13,14 +13,18 @@ import csv
 import time
 import math
 from statistics import mean, pvariance
-
+from dataclasses import dataclass
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.flop_counter import FlopCounterMode
+from inference.core.attention import NSEA as NonSquareExponentialAttention
+from inference.core.arguments import ModelArgs
+import pandas as pd
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, num_heads, dropout=0.1, taylor_n=3):
+    def __init__(self, d_model, num_heads, dropout=0.1):
         super().__init__()
         
         assert d_model % num_heads == 0, \
@@ -86,75 +90,45 @@ class MultiHeadAttention(nn.Module):
         return output
 
 
-class NonSquareExponentialAttention(MultiHeadAttention):
-    def __init__(self, *args, taylor_n=3, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.taylor_n = taylor_n
-
-    @staticmethod
-    def pow(C, n):
-      C_n = C.clone()
-      return C_n.sum(dim=0, keepdim=True)**(n-1) * C_n
-    
-    def exponential_head(self, matrix_product):
-        s = matrix_product ** 0
-        for k in range(1, 5):  # Taylor N = 4
-            s = s + (1.0 / math.factorial(k)) * pow(matrix_product, k)
-        return s
-    
-    def scaled_dot_product_attention(self, Q, K, V, mask=None):
-        d_k = Q.size(-1)
-        
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(d_k)
-        
-        if mask is not None:
-            scores = scores.masked_fill(mask == 0, float('-inf'))
-        
-        attention_weights = self.exponential_head(scores)
-        attention_weights = self.dropout(attention_weights)
-        
-        attention_output = torch.matmul(attention_weights, V)
-        
-        return attention_output, attention_weights
-
-
-class HadamardExponentialAttention(NonSquareExponentialAttention):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @staticmethod
-    def pow(C, power):
-        return C ** power
-
-
-def timed_forward(model, x, device, name):
+def timed_forward(model, idx, emb, device, name):
     if device.type == "cuda":
         torch.cuda.synchronize()
     t0 = time.time()
     with torch.no_grad():
-        out = model(x)
+        x = emb(idx)  # (batch, seq_len, p)
+        _ = model(x)
     if device.type == "cuda":
         torch.cuda.synchronize()
     t1 = time.time()
-    return t1 - t0, out
+
+    flop_counter = FlopCounterMode(mods=model, display=False, depth=None)
+    with flop_counter:
+        with torch.no_grad():
+            x = emb(idx)  # (batch, seq_len, p)
+            _ = model(x)
+    total_flops =  flop_counter.get_total_flops()
+
+    return t1 - t0, total_flops
 
 
 def run_benchmark(
         vocab_size, device, total_tokens, seq_len, mini_batch, 
-        d_model=512, num_heads=16, taylor_n=3):
+        d_model=2048, num_heads=16, taylor_n=3):
     # Setup embedding and models
     emb = nn.Embedding(vocab_size, d_model).to(device)
 
     mha = MultiHeadAttention(
-        d_model=d_model, num_heads=num_heads, taylor_n=taylor_n).to(device)
-    nsea = NonSquareExponentialAttention(
-        d_model=d_model, num_heads=num_heads, taylor_n=taylor_n).to(device)
-    hnsea = HadamardExponentialAttention(
-        d_model=d_model, num_heads=num_heads, taylor_n=taylor_n).to(device)
+        d_model=d_model, num_heads=num_heads).to(device)
+    
+    margs = ModelArgs()
+
+    margs.dim = d_model
+    margs.n_heads = num_heads
+
+    nsea = NonSquareExponentialAttention(margs).to(device)
 
     models = [
         ("NonSquareExponential", nsea),
-        ("HadamardExponential", hnsea),
         ("MultiHeadAttention", mha),
     ]
 
@@ -162,6 +136,7 @@ def run_benchmark(
 
     for name, model in models:
         durations = []
+        flops_list = []
         tokens_processed = 0
         iterations = 0
 
@@ -174,30 +149,25 @@ def run_benchmark(
             # sample random token indices
             idx = torch.randint(low=0, high=vocab_size, size=(batch, seq_len), 
                                 device=device)
-            x = emb(idx)  # (batch, seq_len, p)
 
             # model expects (batch, seq_len, p) -> forward returns something
-            dur, _ = timed_forward(model, x, device, name)
+            dur, flops = timed_forward(model, idx, emb, device, name)
 
             durations.append(dur)
+            flops_list.append(flops)
             tokens_processed += batch * seq_len
             iterations += 1
 
-        # compute per-batch and per-token stats
-        per_batch_mean = mean(durations)
-        per_batch_var = pvariance(durations)
-        per_token_times = [d / (mini_batch * seq_len) for d in durations]
-        per_token_mean = mean(per_token_times)
-        per_token_var = pvariance(per_token_times)
+        per_batch_mean_flops = mean(flops_list)
+        per_token_flops      = [d / (mini_batch * seq_len) for d in flops_list]
+        per_token_mean_flops = mean(per_token_flops)
 
         results.append({
             "vocab_size": vocab_size,
             "model": name,
             "batches": len(durations),
-            "per_batch_mean_s": per_batch_mean,
-            "per_batch_variance_s": per_batch_var,
-            "per_token_mean_s": per_token_mean,
-            "per_token_variance_s": per_token_var,
+            "per_batch_flops": per_batch_mean_flops,
+            "per_token_flops": per_token_mean_flops,
         })
 
     return results
@@ -215,25 +185,25 @@ def main():
     device = torch.device(args.device)
 
     vocab_sizes = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+    batch_sizes = [16, 32, 64, 128]
 
     all_results = []
     print(f'''Running benchmark on device={device}, total_tokens={args.total_tokens}, 
           seq_len={args.seq_len}, mini_batch={args.mini_batch}''')
 
     for v in vocab_sizes:
-        print(f"Benchmarking vocab_size={v}...")
-        res = run_benchmark(vocab_size=v, device=device, total_tokens=args.total_tokens, 
-                            seq_len=args.seq_len, mini_batch=args.mini_batch)
-        all_results.extend(res)
+        for b in batch_sizes:
+            print(f"Benchmarking vocab_size={v}...")
+            res = run_benchmark(vocab_size=v, device=device, total_tokens=args.total_tokens, 
+                                seq_len=args.seq_len, mini_batch=b)
+            all_results.extend(res)
 
     # write CSV
-    keys = ["vocab_size", "model", "batches", "per_batch_mean_s", "per_batch_variance_s", 
-            "per_token_mean_s", "per_token_variance_s"]
-    with open("computation_efficiency.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=keys)
-        writer.writeheader()
-        for r in all_results:
-            writer.writerow(r)
+    columns = [
+        "vocab_size", "model", "batches", "per_batch_flops", "per_token_flops"
+    ]
+    df = pd.DataFrame(all_results, columns=columns)
+    df.to_csv("computation_efficiency.csv", index=False)
 
     print(f"Finished. Results written to computation_efficiency.csv")
 
