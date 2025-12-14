@@ -1,8 +1,14 @@
 \section{Background and Rationale}
 
-\subsection{Multi-Head Attention}
+Transformer architectures, built on attention mechanisms, are now fundamental to modern deep learning, particularly in the fields of natural language processing and computer vision. In particular, the multi-head attention mechanism, as introduced in the seminal work by \cite{Vaswani2017}, allows models to focus on different parts of the input data simultaneously, enhancing their ability to capture complex patterns and dependencies. Nonetheless, pre-trained attention-based models are computationally inefficient, require substantial amounts of data, and need to be fine-tuned for specific tasks \citep{Lin2022}. \\
 
-The standard multi-head attention mechanism operates by projecting an input matrix into multiple subspaces via parallel "heads." For a given head $i$, the operation is defined as:
+In this section, we provide a concise overview of the standard attention mechanism, emphasizing its mathematical formulation and the role of exponentiation within it. This sets the stage for our proposed methodology, which seeks to redefine attention through the lens of non-square matrix exponentiation.
+
+\subsection{The standard attention mechanism}
+
+The standard attention mechanism 
+
+operates by projecting an input matrix into multiple subspaces via parallel "heads." For a given head $i$, the operation is defined as:
 
 \begin{equation}
   \label{eq:multi-head-attention}
@@ -17,8 +23,51 @@ where the constituent matrices are derived from the input $\X \in \mathbb{R}^{m 
   \V_i &= \X \W_{v_i}, \quad \W_{v_i} \in \mathbb{R}^{n \times d_v}.
 \end{align*}
 
-Here, $\Q_i, \K_i \in \mathbb{R}^{m \times d_k}$ are the query and key matrices, respectively, and $\V_i \in \mathbb{R}^{m \times d_v}$ is the value matrix.
+Here, $\Q_i, \K_i \in \mathbb{R}^{m \times d_k}$ are the query and key matrices, respectively, and $\V_i \in \mathbb{R}^{m \times d_v}$ is the value matrix.\\
 
-\subsection{Exponential Form of Attention}
+The core of the attention mechanism lies in the scaled dot-product $\Q_i \K_i^T$. The subsequent application of the $\softmax$ function, defined for a vector $\z \in \mathbb{R}^K$ as $\sigma(\z)_i = \exp(z_i) / \sum_{j=1}^{K} \exp(z_j)$, imparts an exponential character to the entire operation. This observation is critical: the output of each attention head $H_i \in \mathbb{R}^{m \times d_v}$ is fundamentally a product of an exponentially-weighted matrix and a linear projection of the input as showed in Equation~\ref{eq:multi-head-attention-example}.\\
 
-The core of the attention mechanism lies in the scaled dot-product $\Q_i \K_i^T$. The subsequent application of the $\softmax$ function, defined for a vector $\z \in \mathbb{R}^K$ as $\sigma(\z)_i = \exp(z_i) / \sum_{j=1}^{K} \exp(z_j)$, imparts an exponential character to the entire operation. This observation is critical: the output of each attention head $H_i \in \mathbb{R}^{m \times d_v}$ is fundamentally a product of an exponentially-weighted matrix and a linear projection of the input.
+\begin{equation}
+  \label{eq:multi-head-attention-example}
+  H_{i} \defeq \left(\begin{matrix}
+    \frac{\exp^z_{1, 1}}{ \sum_{j=1}^{m} \exp^z_{1, j}} & \cdots & \frac{\exp^z_{1, m}}{ \sum_{j=1}^{m} \exp^z_{1, j}} \\
+    \vdots & \ddots & \vdots \\
+    \frac{\exp^z_{m, 1}}{ \sum_{j=1}^{m} \exp^z_{m, j}} & \cdots & \frac{\exp^z_{m, m}}{ \sum_{j=1}^{m} \exp^z_{m, j}}
+  \end{matrix}\right) \V_i,
+\end{equation}
+
+Finally, the model then concatenates all the outputs and projects them back to a $m$-dimensional representation as follows:
+
+\begin{equation}
+  MHA(\Q, \K, \V) = \text{concat}(H_1, \ldots, H_h) \W_o,
+\end{equation}
+
+where $\W_o \in \mathbb{R}^{d_v \times d_m}$. In essence, the attention mechanisms select, modulate, and focus on the information most relevant to behavior. According to \citet{deSantanaCorreia2022}, attention has existed for at least three decades and has been applied in various domains, including computer vision, natural language processing, and speech recognition, among others. Modern approaches to attention mechanisms are primarily based on the Transformer architecture \citep{Vaswani2017}, which relies on self-attention to model relationships between different parts of the input data. However, as mentioned earlier, the computational and parametric cost present significant challenges, and in response, other attention variants have been proposed, such as sparse attention, linear attention, prototype and memory Compression, low-rank attention, and attention with prior \citep{Lin2022}. 
+
+Although several variants of attention mechanisms exist, the multi-head attention mechanism remains the most widely adopted due to its effectiveness in capturing diverse patterns~\citep{Bahdanau2015Rnn,Bahdanau2015Seq,Xiong2025,Zhang2025,Liu2025,Li2025,Sharifi2025,Hasan2024}. \\ 
+
+\subsection{Attention Variants Taxonomy}
+
+\subsubsection{Sparse Attention}
+
+Sparse attention mechanisms aim to reduce the computational burden of standard attention by limiting the number of interactions between tokens. Techniques such as local attention, where each token attends only to its neighboring tokens, and global attention, which allows certain tokens to attend to all others, are common strategies~\citep{child2019generatinglongsequencessparse,Xu2021,Guo2019}. These methods significantly decrease the number of computations required, making them more efficient for long sequences.
+
+\subsubsection{Linearized atttention}
+
+Let $\Q,\K,\V \in \mathbb{R}^{n \times d_k}$, the complexity of computing $\softmax (\Q \K^T) \V$ is quadratic, then we can try to disentangle the equation into $\Q' \K'^{T}$, and we can compute $\Q \K^{T}$ in reverse order ($\Q (\K^T \V)$) leading to linear complexity. This is the main idea behind linearized attention mechanisms, which approximate the attention computation using kernel methods or low-rank approximations~\citep{Katharopoulos2020,Choromanski2022,Feng2022}. This could be especially beneficial for autoregressive attention, where the model generates sequences token by token, as it allows for efficient computation without sacrificing performance, and also enables Transformer decoders to run like RNNs~\citep{Lin2022} 
+
+\subsubsection{Query Prototyping and Memory Compression}
+
+Apart from the variants mentioned above, other approaches focus on compressing the attention mechanism itself by reducing the number of queries or keys used in the attention computation. Either the queries are selected from a subset of representative tokens (prototyping) or the keys and values are compressed into a smaller set of memory slots. These methods aim to retain the most salient information while reducing the overall computational load. They can lower the quadratic complexity of self-attention to linear or near-linear scaling, enabling more efficient processing of long inputs without substantial loss in performance.
+
+\subsubsection{Low-Rank Attention}
+
+Consider the attention matrix $\A = \softmax \left( \frac{\Q \K^{T}}{\sqrt(d_k)} \right)$. Theoretical analysis and empirical evidence suggest that $\A$ often exhibits low-rank properties \citep{Guo2019rank}, this means that the matrix can be approximated by a product of two smaller matrices, $\A = \U \V^{T}$, where $\U \in \mathbb{R}^{m \times r}$ and $\V \in \mathbb{R}^{n \times r}$ with $r << min(m,n)$. Decomposing the attention matrix into smaller components reduces the number of parameters and computation cost while preserving complex relationships in the data.
+
+\subsubsection{Attention with prior}
+
+Attention with prior enhances the standard self-attention mechanism by incorporating external or pre-existing knowledge into the attention distribution, rather than relying solely on query-key similarity. This prior can take various forms: it may encode structural information such as positional relationships (e.g., via trainable positional biases or Gaussian locality biases) \citep{Raffel2020}, reuse attention patterns from previous layers (acting as a form of residual or convolutional prior) \citep{Esearch2011}, or even serve as a task-specific adapter in transfer-learning setups \citep{ying2021lazyformerselfattentionlazy}. In some cases, the prior can entirely replace the dynamically generated attention—for example, using a fixed uniform or Gaussian distribution—which simplifies computation and can improve efficiency. Experiments show that the resulting model remains effective while being much more efficient to compute \citep{Lin2022}.
+
+\subsubsection{Rationale}
+
+While these variants significantly improve atttention-based models efficiency while preserving or even enhancing performance, they often introduce additional complexity in terms of implementation and hyperparameter tuning. Moreover, many of these methods still rely on the fundamental formulation of the standard attention mechanism, which may limit their ability to fully exploit the potential of alternative mathematical formulations, and even more, they enhance performance but lose the relationship inference power of the original attention mechanism. This motivates our exploration into a novel exponentiation-based attention mechanism that seeks to redefine the attention operation itself, aiming for a more parameter-efficient and theoretically grounded approach. 

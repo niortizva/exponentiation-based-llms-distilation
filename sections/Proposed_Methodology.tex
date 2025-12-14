@@ -1,4 +1,4 @@
-\section{Proposed Methodology: Exponentiation of Non-Square Matrices}
+\section{Methodology: Exponentiation of Non-Square Matrices}
 
 The classical matrix exponential, defined for a square matrix $\A \in \mathbb{R}^{n \times n}$ via the Taylor series:
 
@@ -17,7 +17,7 @@ Let $\A \in \mathbb{R}^{m \times n}$ and $\B \in \mathbb{R}^{n \times p}$. We se
   \item \textbf{Null Element:} There exists an element $\mathbf{0}$ such that $\0{m}{n} \circledast \A = \0{m}{n}$.
 \end{enumerate}
 
-Hadamard product ($\odot$) is a well-known element-wise multiplication operation for matrices of the same dimensions, however, it lacks of elements recombination power of standard matrix multiplication. To address this, we propose a novel product operation $\circledast$ for non-square matrices that combines the element-wise multiplication with a summation over the rows, effectively allowing for a richer interaction between the elements of the matrices involved. The development of such an operation is the primary theoretical contribution of this work, forming the basis for our proposed exponentiation-based attention mechanism. Thus:
+Hadamard product ($\odot$) is a well-known element-wise multiplication operation for matrices of the same dimensions; however, it lacks of elements recombination power of standard matrix multiplication. To address this, we propose a novel product operation $\circledast$ for non-square matrices that combines the element-wise multiplication with a summation over the rows, effectively allowing for a richer interaction between the elements of the matrices involved. The development of such an operation is the primary theoretical contribution of this work, forming the basis for our proposed exponentiation-based attention mechanism. Thus:
 
 \begin{definition}
   Given $\A , \B \in \vectorspace{m}{n}$, we define the product operation $\circledast  : \vectorspace{m}{n} \to \vectorspace{m}{n}$ as a block matrix given by:
@@ -41,7 +41,7 @@ The product operation $\circledast$ defined in Equation~\ref{eq:non-square-produ
 \begin{proposition}
   The product operation $\circledast$ defined in Equation~\ref{eq:non-square-product} is associative, has a left identity element $\I{m}{n}$, and a null element $\0{m}{n}$. That is:
   \begin{enumerate}
-    \item[(i)] \textbf{Associativity:} For $\A, \B, \C \in \vectorspace{m}{n}$, $(\A \circledast \B) \circledast \C =  \A \circledast (\B \circledast \C$.
+    \item[(i)] \textbf{Associativity:} For $\A, \B, \C \in \vectorspace{m}{n}$, $(\A \circledast \B) \circledast \C =  \A \circledast (\B \circledast \C)$.
     \item[(ii)] \textbf{Identity Element:} Let $\A \in \vectorspace{m}{n}$ and $\I{m}{n}$ be the non-square identity matrix, then: $\I{m}{n} \circledast \A = \A$.
     \item[(iii)] \textbf{Null Element:} Let $\A \in \vectorspace{m}{n}$ and $\0{m}{n}$ be the zero non-square matrix, then: $\0={m}{n} \circledast \A = \0{m}{n}$.
   \end{enumerate}
@@ -60,8 +60,11 @@ The product operation $\circledast$ defined in Equation~\ref{eq:non-square-produ
           \sum_{p=1}^{n} \A_{p} \odot \B_{1} \\
           \vdots \\
           \sum_{p=1}^{n} \A_{p} \odot \B_{m} \\
-        \end{matrix} \right] \circledast \C \\ 
-        & = \sum_{q=1}^{n} \left[ \begin{matrix}
+        \end{matrix} \right] \circledast \C \\
+      \end{align*}  
+      \begin{align*} 
+        (\A \circledast \B) \circledast \C &
+        = \sum_{q=1}^{n} \left[ \begin{matrix}
           \left(\sum_{p=1}^{n} \A_{p} \odot \B_{q}\right) \odot C_1 \\
           \vdots \\
           \left(\sum_{p=1}^{n} \A_{p} \odot \B_{q}\right) \odot C_m\\
@@ -98,7 +101,7 @@ The product operation $\circledast$ defined in Equation~\ref{eq:non-square-produ
         \end{matrix} \right]
       \end{align*}
        Observe that $\left(\I{m}{n} \circledast \A\right)_{i,j} = \sum_{k=1}^{n} \left(\I{m}{n}\right)_{k, j} \odot A_{i,j} = A_{i,j}$ since only the term where $k = j$ contributes to the sum. Therefore, $\I{m}{n} \circledast \A = \A$.
-    \item[(iii)] \textbf{Null Element:} Let $\A \in \vectorspace{m}{n}$ and $\0{m}{n}$ be the zero non-square matrix ($\left(\0{m}{n}\right)_{i,j}= 0$), since all its entries are zero. Then $\left(\0{m}{n} \circledast \A\right)_{i,j} = 0$ for all $i, j$ since each term in the sum involves multiplication by zero. Thus, $\0{m}{n} \circledast \A = \0{m}{n}$.
+    \item[(iii)] \textbf{Null Element:} Let $\A \in \vectorspace{m}{n}$ and $\0{m}{n}$ be the zero non-square matrix ($\left(\0{m}{n}\right)_{i,j}= 0$). Then $\left(\0{m}{n} \circledast \A\right)_{i,j} = 0$ for all $i, j$ since each term in the sum involves multiplication by zero. Thus, $\0{m}{n} \circledast \A = \0{m}{n}$.
   \end{enumerate}
 \end{proof}
 
@@ -130,3 +133,17 @@ For practical implementation, we approximate the infinite series in Equation~\re
   \label{eq:truncated-non-square-exponential}
   \exp(\A) \approx \I{m}{n} + \sum_{k=1}^{K} \frac{\A^k}{k!}.
 \end{equation}
+
+\subsection{Non-Square Exponential Attention Mechanism}
+
+Building upon the defined non-square matrix exponential, we propose a novel attention mechanism that leverages this operation to capture high-order interactions in the input data. Similarly to the linearized attention mechanism, we aim to capture complex relationships by preserving a radial basis function kernel structure ($\expo{{-\Vert{x}\Vert^2\lambda}}$), and preserving attention's exponential nature and dimensionality.
+
+The Non-Square Exponential Attention (NSEA) mechanism is defined as follows: based on the radial structure of multi-head attention, the radial basis functions, and the exponential form of attention described earlier. The NSEA for a given input matrix $\X \in \mathbb{R}^{m \times n}$ is defined as:
+
+\begin{equation}
+  \label{eq:nsea}
+  H \defeq \exp\left( (\X \W + \B)^2 \mathbf{\Lambda} \right)
+\end{equation}
+
+
+where $\W \in \mathbb{R}^{n \times d_k}$,  $\mathbf{\Lambda} \in \mathbb{R}^{d_k \times d_v}$. Where \(\mathbf{\Lambda}\) is a learnable diagonal matrix that scales the contributions of each dimension in the transformed space, allowing the model to adaptively focus on different aspects of the input features. The bias term \(\B \in \mathbb{R}^{m \times d_k}\) is included to provide additional flexibility in the transformation, enabling the model to better capture complex patterns in the data. The output \(H \in \mathbb{R}^{m \times d_v}\) represents the attention-weighted representations of the input tokens, where \(d_v\) is the dimensionality of the value vectors. \\

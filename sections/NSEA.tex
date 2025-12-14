@@ -1,32 +1,18 @@
-\section{Non-Square Exponential Attention Mechanism}
+\section{Experiments and Results}
 
-Building upon the defined non-square matrix exponential, we propose a novel attention mechanism that leverages this operation to capture high-order interactions in the input data. The Non-Square Exponential Attention (NSEA) mechanism is defined as follows, based on the radial structure of multi-head attention, the radial basis functions, and the exponential form of attention described earlier. The NSEA for a given input matrix $\X \in \mathbb{R}^{m \times n}$ is defined as:
-
-\begin{equation}
-  \label{eq:nsea}
-  H \defeq \exp\left( \frac{\Q \K^T }{ \sqrt{d_{k}}} \right) \V
-\end{equation}
-
-
-where $\Q_i = \X \W_{q_i}, \quad \W_{q_i} \in \mathbb{R}^{n \times d_k}$,  $\K_i = \X \W_{k_i}, \quad \W_{k_i} \in \mathbb{R}^{n \times d_k}$, and $\V_i = \X \W_{v_i}, \quad \W_{v_i} \in \mathbb{R}^{n \times d_v}$.\\
-
-Finally, we also compared results using NSEA but without using $\circledast$ operation, instead using Hadamard product ($\odot$) to extend non-square matrix exponentiation and using the same radial basis function structure such that:
-
-\subsection{Experiments and Results}
-
-To evaluate the effectiveness of the NSEA mechanism, we conducted different experiments, comparing its performance against traditional multihead-attention. The results indicate that NSEA consistently outperforms standard attention in terms of accuracy and convergence speed, particularly in tasks requiring the modeling of complex relationships like natural language tasks. \\
+To evaluate the efficiency of the NSEA mechanism, we compare its performance against traditional multi-head attention. 
 
 \subsubsection{Computation Effeciency}
 
-We analyszed the computation effeciency of NSEA compared against Multi-head attention (MHA), and Hadamard-based exponential attention (HEA) by measuring the time taken for forward passes on varying vocab sizes and a random input sequence of lengh $16384$.
+We analyszed the computation effeciency of NSEA compared against Multi-head attention (MHA), by measuring the FLOPs taken for forward passes on varying vocab sizes and batch length for a random input sequence of lengh $16384 = (4096 \times 4)$, an wmbedding size of $2048$ (DeeepSeek's maximm sequence length and embedding size \citep{deepseekai2025deepseekv3technicalreport}), and a $4$-degree Taylor aproxximation on a computer with $24$ GB of RAM with a speed of $4800 MT/s$, and a $13^{th}$ Generation Intel(R) Core(TM) i5-3420H. Figure~\ref{fig:computation_efficiency} illustrates the testing setup.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/computation_efficiency_setup.png}
+    \caption{Computation Efficiency Testing Setup}
+    \label{fig:computation_efficiency}
+\end{figure}
 
 \input{sections/tables/computation_efficiency}
 
-Table~\ref{tab:computation_efficiency} indicates that HEA consistently outperforms MHA, as expected, HEA is more efficiente than NSEA due to the simpler Hadamard product operation, but NSEA still maintains a competitive edge in terms of speed while providing enhanced modeling capabilities.
-
-\subsubsection{Complexity Capability Evaluation}
-
-To access the complexity capability of NSEA, we finetune the following models based on the Transformer architecture: a baseline model with Multi-Head Attention (MHA), a model with Hadamard-based Exponential Attention (HEA), and a model with Non-Square Exponential Attention (NSEA). Each model is trained and evaluated on benchmark datasets that require understanding of complex relationships, such as the GLUE benchmark for natural language understanding. The performance metrics, including accuracy and F1 score, are summarized in Table~\ref{tab:complexity_capability}.
-
-
-
+Table~\ref{tab:computation_efficiency} indicates that HEA outperforms MHA. Results prove that NSEA is significantly more efficient than MHA in terms of FLOPs, with a compression ratio of approximately $257$ times. This efficiency gain is attributed to the reduced computational complexity of the non-square exponential operation compared to the traditional attention mechanism, which involves more intensive matrix multiplications and softmax operations.
